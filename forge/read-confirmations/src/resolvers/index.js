@@ -1,5 +1,5 @@
 import Resolver from '@forge/resolver';
-import { requestConfluence, requestJira } from '@forge/api';
+import { requestConfluence, requestJira, route } from '@forge/api';
 
 const resolver = new Resolver();
 
@@ -7,7 +7,7 @@ const resolver = new Resolver();
 
 async function getConfirmationData(pageId) {
   const res = await requestConfluence(
-    `/wiki/rest/api/content/${pageId}/property/read-confirmations`,
+    route`/wiki/rest/api/content/${pageId}/property/read-confirmations`,
     { headers: { Accept: 'application/json' } }
   );
   if (res.status === 404) return { readers: [], version: 0 };
@@ -19,8 +19,8 @@ async function saveConfirmationData(pageId, readers, currentVersion) {
   const isNew = currentVersion === 0;
   const method = isNew ? 'POST' : 'PUT';
   const url = isNew
-    ? `/wiki/rest/api/content/${pageId}/property`
-    : `/wiki/rest/api/content/${pageId}/property/read-confirmations`;
+    ? route`/wiki/rest/api/content/${pageId}/property`
+    : route`/wiki/rest/api/content/${pageId}/property/read-confirmations`;
 
   await requestConfluence(url, {
     method,
@@ -36,7 +36,7 @@ async function saveConfirmationData(pageId, readers, currentVersion) {
 async function closeJiraSubtask(pageId, accountId) {
   // 1. Get the DOCACK parent issue key from the page's content property
   const keyRes = await requestConfluence(
-    `/wiki/rest/api/content/${pageId}/property/docack-parent-key`,
+    route`/wiki/rest/api/content/${pageId}/property/docack-parent-key`,
     { headers: { Accept: 'application/json' } }
   );
   if (keyRes.status !== 200) return;
@@ -49,7 +49,7 @@ async function closeJiraSubtask(pageId, accountId) {
     `project=DOCACK AND parent="${parentKey}" AND assignee="${accountId}" AND status!="Done"`
   );
   const searchRes = await requestJira(
-    `/rest/api/3/search?jql=${jql}&maxResults=1`,
+    route`/rest/api/3/search?jql=${jql}&maxResults=1`,
     { headers: { Accept: 'application/json' } }
   );
   const searchBody = await searchRes.json();
@@ -59,7 +59,7 @@ async function closeJiraSubtask(pageId, accountId) {
 
   // 3. Get the Done transition ID
   const transRes = await requestJira(
-    `/rest/api/3/issue/${subtaskId}/transitions`,
+    route`/rest/api/3/issue/${subtaskId}/transitions`,
     { headers: { Accept: 'application/json' } }
   );
   const transBody = await transRes.json();
@@ -69,7 +69,7 @@ async function closeJiraSubtask(pageId, accountId) {
   if (!doneTx) return;
 
   // 4. Transition to Done
-  await requestJira(`/rest/api/3/issue/${subtaskId}/transitions`, {
+  await requestJira(route`/rest/api/3/issue/${subtaskId}/transitions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ transition: { id: doneTx.id } }),
