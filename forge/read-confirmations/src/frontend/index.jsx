@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { Text, Button, Fragment, useProductContext } from '@forge/react';
+import ForgeReconciler, { Text, Button, LoadingButton, useProductContext } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
 const App = () => {
@@ -38,20 +38,18 @@ const App = () => {
     : null;
 
   return (
-    <Fragment>
+    <>
       <Text>
         {alreadyConfirmed
           ? `✅ You confirmed on ${confirmedDate}`
           : `📄 ${count} confirmed`}
       </Text>
       {!alreadyConfirmed && (
-        <Button
-          text={confirming ? 'Confirming...' : '✅ I have read this document'}
-          onClick={confirm}
-          isDisabled={confirming}
-        />
+        <LoadingButton onClick={confirm} isLoading={confirming}>
+          ✅ I have read this document
+        </LoadingButton>
       )}
-    </Fragment>
+    </>
   );
 };
 
