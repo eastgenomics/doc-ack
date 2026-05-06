@@ -1,5 +1,5 @@
 import Resolver from '@forge/resolver';
-import { storage, requestJira, route } from '@forge/api';
+import { storage, requestConfluence, requestJira, route } from '@forge/api';
 
 const resolver = new Resolver();
 
@@ -19,8 +19,14 @@ async function saveConfirmationData(pageId, readers) {
 }
 
 async function getDocAckKey(pageId) {
-  const data = await storage.get(`docack-parent-key-${pageId}`);
-  return data?.issueKey ?? null;
+  // Rule A writes this as a Confluence content property via the Jira automation web request
+  const res = await requestConfluence(
+    route`/rest/api/content/${pageId}/property/docack-parent-key`,
+    { headers: { Accept: 'application/json' } }
+  );
+  if (res.status !== 200) return null;
+  const body = await res.json();
+  return body.value?.issueKey ?? null;
 }
 
 // ─── Jira sub-task helper ─────────────────────────────────────────────────────

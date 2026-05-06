@@ -119,7 +119,7 @@ For each new or updated document requiring acknowledgement:
    - `Release development and testing` (Confluence page URL)
    - `Document Version` (e.g. `v2.1`)
    - `Acknowledgement Required` (`Yes — whole team` / `Yes — specified individuals` / `No`)
-   - `Acknowledgement Recipients` (if specified individuals)
+   - `Acknowledgers` (if specified individuals)
 4. Rule B and Rule A fire automatically (~60 seconds)
 5. On the SOP page (if acknowledgement required):
    - Page Properties → `Acknowledgement Task`: paste DOCACK issue URL
