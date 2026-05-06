@@ -7,7 +7,7 @@ const resolver = new Resolver();
 
 async function getConfirmationData(pageId) {
   const res = await requestConfluence(
-    route`/wiki/rest/api/content/${pageId}/property/read-confirmations`,
+    route`/rest/api/content/${pageId}/property/read-confirmations`,
     { headers: { Accept: 'application/json' } }
   );
   if (res.status === 404) return { readers: [], version: 0 };
@@ -19,24 +19,29 @@ async function saveConfirmationData(pageId, readers, currentVersion) {
   const isNew = currentVersion === 0;
   const method = isNew ? 'POST' : 'PUT';
   const url = isNew
-    ? route`/wiki/rest/api/content/${pageId}/property`
-    : route`/wiki/rest/api/content/${pageId}/property/read-confirmations`;
+    ? route`/rest/api/content/${pageId}/property`
+    : route`/rest/api/content/${pageId}/property/read-confirmations`;
 
-  await requestConfluence(url, {
+  const res = await requestConfluence(url, {
     method,
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
       key: 'read-confirmations',
       value: { readers },
-      version: { number: currentVersion + 1 },
+      ...(isNew ? {} : { version: { number: currentVersion + 1 } }),
     }),
   });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to save confirmations (${res.status}): ${body}`);
+  }
 }
 
 async function closeJiraSubtask(pageId, accountId) {
   // 1. Get the DOCACK parent issue key from the page's content property
   const keyRes = await requestConfluence(
-    route`/wiki/rest/api/content/${pageId}/property/docack-parent-key`,
+    route`/rest/api/content/${pageId}/property/docack-parent-key`,
     { headers: { Accept: 'application/json' } }
   );
   if (keyRes.status !== 200) return;
