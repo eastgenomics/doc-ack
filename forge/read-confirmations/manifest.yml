@@ -1,0 +1,20 @@
+app:
+  id: "ari:cloud:ecosystem::app/TO-BE-SET-AFTER-FORGE-CREATE"
+
+modules:
+  confluence:contentBylineItem:
+    - key: read-confirm-byline
+      title: Read Confirmations
+      function: byline-handler
+      icon: checkmark-circle
+
+  function:
+    - key: byline-handler
+      handler: index.handler
+
+permissions:
+  scopes:
+    - read:confluence-content.all
+    - write:confluence-props
+    - read:jira-work
+    - write:jira-work

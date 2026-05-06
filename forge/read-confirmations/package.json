@@ -1,0 +1,17 @@
+{
+  "name": "read-confirmations",
+  "version": "1.0.0",
+  "description": "Document read acknowledgement button for Confluence pages",
+  "main": "src/index.tsx",
+  "scripts": {
+    "build": "forge build"
+  },
+  "dependencies": {
+    "@forge/api": "^4.0.0",
+    "@forge/ui": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
