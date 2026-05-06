@@ -1,5 +1,5 @@
 app:
-  id: "ari:cloud:ecosystem::app/TO-BE-SET-AFTER-FORGE-CREATE"
+  id: "ari:cloud:ecosystem::app/8ed791e8-4229-4af1-b261-c396cc92aae7"
 
 modules:
   confluence:contentBylineItem:
