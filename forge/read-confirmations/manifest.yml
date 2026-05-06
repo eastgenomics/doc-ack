@@ -1,16 +1,26 @@
 app:
   id: "ari:cloud:ecosystem::app/8ed791e8-4229-4af1-b261-c396cc92aae7"
+  runtime:
+    name: nodejs24.x
+    memoryMB: 256
+    architecture: arm64
 
 modules:
   confluence:contentBylineItem:
     - key: read-confirm-byline
+      resource: main
+      resolver:
+        function: resolver
+      render: native
       title: Read Confirmations
-      function: byline-handler
-      icon: checkmark-circle
 
   function:
-    - key: byline-handler
+    - key: resolver
       handler: index.handler
+
+resources:
+  - key: main
+    path: src/frontend/index.jsx
 
 permissions:
   scopes:

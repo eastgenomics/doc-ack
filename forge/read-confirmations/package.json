@@ -1,17 +1,20 @@
 {
   "name": "read-confirmations",
   "version": "1.0.0",
-  "description": "Document read acknowledgement button for Confluence pages",
-  "main": "src/index.tsx",
+  "description": "Document read acknowledgement byline button for Confluence",
+  "private": true,
   "scripts": {
-    "build": "forge build"
+    "lint": "eslint src/**/*"
   },
   "dependencies": {
-    "@forge/api": "^4.0.0",
-    "@forge/ui": "^2.0.0"
+    "@forge/api": "^7.1.4",
+    "@forge/bridge": "5.16.0",
+    "@forge/react": "11.15.0",
+    "@forge/resolver": "1.8.0",
+    "react": "^18.2.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0"
   }
 }
