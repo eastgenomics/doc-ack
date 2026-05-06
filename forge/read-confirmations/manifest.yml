@@ -25,6 +25,6 @@ resources:
 permissions:
   scopes:
     - read:confluence-content.all
-    - write:confluence-props
+    - storage:app
     - read:jira-work
     - write:jira-work

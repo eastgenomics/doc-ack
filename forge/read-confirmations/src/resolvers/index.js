@@ -1,55 +1,33 @@
 import Resolver from '@forge/resolver';
-import { requestConfluence, requestJira, route } from '@forge/api';
+import { properties, requestJira, route } from '@forge/api';
 
 const resolver = new Resolver();
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Content property helpers (via Forge properties API) ─────────────────────
 
 async function getConfirmationData(pageId) {
-  const res = await requestConfluence(
-    route`/rest/api/content/${pageId}/property/read-confirmations`,
-    { headers: { Accept: 'application/json' } }
-  );
-  if (res.status === 404) return { readers: [], version: 0 };
-  const body = await res.json();
-  return { readers: body.value.readers || [], version: body.version.number };
+  const prop = properties.onConfluencePage(pageId);
+  const data = await prop.get('read-confirmations');
+  return { readers: data?.readers ?? [] };
 }
 
-async function saveConfirmationData(pageId, readers, currentVersion) {
-  const isNew = currentVersion === 0;
-  const method = isNew ? 'POST' : 'PUT';
-  const url = isNew
-    ? route`/rest/api/content/${pageId}/property`
-    : route`/rest/api/content/${pageId}/property/read-confirmations`;
-
-  const res = await requestConfluence(url, {
-    method,
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      key: 'read-confirmations',
-      value: { readers },
-      ...(isNew ? {} : { version: { number: currentVersion + 1 } }),
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Failed to save confirmations (${res.status}): ${body}`);
-  }
+async function saveConfirmationData(pageId, readers) {
+  const prop = properties.onConfluencePage(pageId);
+  await prop.set('read-confirmations', { readers });
 }
+
+async function getDocAckKey(pageId) {
+  const prop = properties.onConfluencePage(pageId);
+  const data = await prop.get('docack-parent-key');
+  return data?.issueKey ?? null;
+}
+
+// ─── Jira sub-task helper ─────────────────────────────────────────────────────
 
 async function closeJiraSubtask(pageId, accountId) {
-  // 1. Get the DOCACK parent issue key from the page's content property
-  const keyRes = await requestConfluence(
-    route`/rest/api/content/${pageId}/property/docack-parent-key`,
-    { headers: { Accept: 'application/json' } }
-  );
-  if (keyRes.status !== 200) return;
+  const parentKey = await getDocAckKey(pageId);
+  if (!parentKey) return;
 
-  const keyBody = await keyRes.json();
-  const parentKey = keyBody.value.issueKey;
-
-  // 2. Find the user's open sub-task under that parent
   const jql = encodeURIComponent(
     `project=DOCACK AND parent="${parentKey}" AND assignee="${accountId}" AND status!="Done"`
   );
@@ -62,7 +40,6 @@ async function closeJiraSubtask(pageId, accountId) {
 
   const subtaskId = searchBody.issues[0].id;
 
-  // 3. Get the Done transition ID
   const transRes = await requestJira(
     route`/rest/api/3/issue/${subtaskId}/transitions`,
     { headers: { Accept: 'application/json' } }
@@ -73,7 +50,6 @@ async function closeJiraSubtask(pageId, accountId) {
   );
   if (!doneTx) return;
 
-  // 4. Transition to Done
   await requestJira(route`/rest/api/3/issue/${subtaskId}/transitions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -92,9 +68,8 @@ resolver.define('getConfirmations', async (req) => {
 resolver.define('addConfirmation', async (req) => {
   const pageId = req.context.extension.content.id;
   const accountId = req.context.accountId;
-  const displayName = req.context.accountId; // accountId used as fallback; display name resolved client-side
 
-  const { readers, version } = await getConfirmationData(pageId);
+  const { readers } = await getConfirmationData(pageId);
 
   // Idempotency — do not double-record
   if (readers.find((r) => r.accountId === accountId)) {
@@ -103,12 +78,12 @@ resolver.define('addConfirmation', async (req) => {
 
   readers.push({
     accountId,
-    displayName,
+    displayName: accountId,
     timestamp: new Date().toISOString(),
     version: 'current',
   });
 
-  await saveConfirmationData(pageId, readers, version);
+  await saveConfirmationData(pageId, readers);
 
   // Close Jira sub-task (best-effort)
   try {
