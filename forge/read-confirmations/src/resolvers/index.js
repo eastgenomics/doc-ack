@@ -1,24 +1,25 @@
 import Resolver from '@forge/resolver';
-import { properties, requestJira, route } from '@forge/api';
+import { storage, requestJira, route } from '@forge/api';
 
 const resolver = new Resolver();
 
-// ─── Content property helpers (via Forge properties API) ─────────────────────
+// ─── Storage helpers (Forge storage, keyed by pageId) ────────────────────────
+
+function storageKey(pageId) {
+  return `read-confirmations-${pageId}`;
+}
 
 async function getConfirmationData(pageId) {
-  const prop = properties.onConfluencePage(pageId);
-  const data = await prop.get('read-confirmations');
+  const data = await storage.get(storageKey(pageId));
   return { readers: data?.readers ?? [] };
 }
 
 async function saveConfirmationData(pageId, readers) {
-  const prop = properties.onConfluencePage(pageId);
-  await prop.set('read-confirmations', { readers });
+  await storage.set(storageKey(pageId), { readers });
 }
 
 async function getDocAckKey(pageId) {
-  const prop = properties.onConfluencePage(pageId);
-  const data = await prop.get('docack-parent-key');
+  const data = await storage.get(`docack-parent-key-${pageId}`);
   return data?.issueKey ?? null;
 }
 
