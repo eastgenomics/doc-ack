@@ -33,10 +33,10 @@ const App = () => {
   if (!data) return <Text>Loading...</Text>;
   if (data.error) return <Text>⚠️ Could not load. Please refresh.</Text>;
 
-  const accountId      = context?.accountId;
+  const accountId       = context?.accountId;
   const alreadyConfirmed = data.readers.find(r => r.accountId === accountId);
-  const count          = data.readers.length;
-  const total          = data.total ?? 25;
+  const count           = data.readers.length;
+  const total           = data.total ?? 25;
 
   const confirmedDate = alreadyConfirmed
     ? new Date(alreadyConfirmed.timestamp).toLocaleDateString('en-GB', {
@@ -46,16 +46,13 @@ const App = () => {
 
   return (
     <>
-      <Text>
-        {alreadyConfirmed
-          ? `✅ You confirmed on ${confirmedDate}`
-          : `📄 ${count} / ${total} confirmed`}
-      </Text>
-      {!alreadyConfirmed && (
-        <LoadingButton onClick={confirm} isLoading={confirming}>
-          ✅ I have read this document
-        </LoadingButton>
-      )}
+      <Text>{`📄 ${count} / ${total} confirmed`}</Text>
+      {alreadyConfirmed
+        ? <Text>{`✅ You confirmed on ${confirmedDate}`}</Text>
+        : <LoadingButton onClick={confirm} isLoading={confirming}>
+            ✅ I have read this document
+          </LoadingButton>
+      }
       {errorMsg && <Text>⚠️ {errorMsg}</Text>}
     </>
   );

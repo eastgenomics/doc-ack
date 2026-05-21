@@ -1,5 +1,4 @@
 import Resolver from '@forge/resolver';
-import { requestConfluence, route } from '@forge/api';
 import { kvs } from '@forge/kvs';
 import { BINFX_TEAM } from '../constants/binfxTeam.js';
 
@@ -7,37 +6,23 @@ const resolver = new Resolver();
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
+function storageKey(pageId) {
+  return `read-confirmations-${pageId}`;
+}
+
 async function getConfirmationData(pageId) {
-  const data = await kvs.get(`read-confirmations-${pageId}`);
+  const data = await kvs.get(storageKey(pageId));
   return { readers: data?.readers ?? [] };
 }
 
 async function saveConfirmationData(pageId, readers) {
-  await kvs.set(`read-confirmations-${pageId}`, { readers });
+  await kvs.set(storageKey(pageId), { readers });
 }
 
-// ─── Page index helpers ───────────────────────────────────────────────────────
+const CONFLUENCE_BASE = 'https://cuhbioinformatics.atlassian.net/wiki';
 
-async function addToPageIndex(pageId, pageTitle) {
-  const index = await kvs.get('confirmed-pages-index') ?? [];
-  if (!index.find(p => p.pageId === pageId)) {
-    index.push({ pageId, pageTitle, firstConfirmedAt: new Date().toISOString() });
-    await kvs.set('confirmed-pages-index', index);
-  }
-}
-
-async function getPageTitle(pageId) {
-  try {
-    const res = await requestConfluence(
-      route`/rest/api/content/${pageId}?fields=title`,
-      { headers: { Accept: 'application/json' } }
-    );
-    if (!res.ok) return `Page ${pageId}`;
-    const body = await res.json();
-    return body.title ?? `Page ${pageId}`;
-  } catch {
-    return `Page ${pageId}`;
-  }
+function pageUrlFromId(pageId) {
+  return `${CONFLUENCE_BASE}/pages/viewpage.action?pageId=${pageId}`;
 }
 
 // ─── Resolvers ────────────────────────────────────────────────────────────────
@@ -61,50 +46,55 @@ resolver.define('addConfirmation', async (req) => {
   readers.push({ accountId, timestamp: new Date().toISOString() });
   await saveConfirmationData(pageId, readers);
 
-  // Add page to global index (best-effort, get title from Confluence)
-  try {
-    const title = await getPageTitle(pageId);
-    await addToPageIndex(pageId, title);
-  } catch (e) {
-    console.error('Failed to update page index:', e);
-  }
-
   return { readers, total: BINFX_TEAM.length };
 });
 
 resolver.define('getAllPages', async (_req) => {
-  const index = await kvs.get('confirmed-pages-index') ?? [];
-  const pages = [];
+  let results = [];
+  let cursor;
+  do {
+    const q = kvs.query().where('key', { condition: 'BEGINS_WITH', values: ['read-confirmations-'] });
+    if (cursor) q.cursor(cursor);
+    const page = await q.limit(50).getMany();
+    results = results.concat(page.results ?? []);
+    cursor = page.nextCursor;
+  } while (cursor);
 
-  for (const entry of index) {
-    const { readers } = await getConfirmationData(entry.pageId);
+  const pages = [];
+  for (const item of results) {
+    const pageId = item.key.replace('read-confirmations-', '');
+    const readers = item.value?.readers ?? [];
+    if (readers.length === 0) continue;
+
     const confirmedIds = new Set(readers.map(r => r.accountId));
 
-    const confirmed = readers.map(r => ({
-      accountId: r.accountId,
-      displayName: BINFX_TEAM.find(m => m.accountId === r.accountId)?.name ?? r.accountId,
-      timestamp: r.timestamp,
-    })).sort((a, b) => a.displayName.localeCompare(b.displayName));
+    const confirmed = readers
+      .map(r => ({
+        accountId:   r.accountId,
+        displayName: BINFX_TEAM.find(m => m.accountId === r.accountId)?.name ?? r.accountId,
+        timestamp:   r.timestamp,
+      }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
     const pending = BINFX_TEAM
       .filter(m => !confirmedIds.has(m.accountId))
       .map(m => ({ accountId: m.accountId, displayName: m.name }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
+    const firstConfirmedAt = readers.map(r => r.timestamp).sort()[0] ?? new Date().toISOString();
+
     pages.push({
-      pageId:          entry.pageId,
-      pageTitle:       entry.pageTitle,
-      firstConfirmedAt: entry.firstConfirmedAt,
+      pageId,
+      pageUrl:        pageUrlFromId(pageId),
+      firstConfirmedAt,
       confirmed,
       pending,
-      confirmedCount:  confirmed.length,
-      totalRequired:   BINFX_TEAM.length,
+      confirmedCount: confirmed.length,
+      totalRequired:  BINFX_TEAM.length,
     });
   }
 
-  // Sort by most recently active first
   pages.sort((a, b) => new Date(b.firstConfirmedAt) - new Date(a.firstConfirmedAt));
-
   return { pages };
 });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { Text, useProductContext } from '@forge/react';
+import ForgeReconciler, { Text, Link, useProductContext } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
 const formatDate = iso =>
@@ -14,10 +14,11 @@ const PageCard = ({ page }) => {
     <>
       <Text>
         {complete ? '✅ ' : '📋 '}
-        {page.pageTitle}
+        {`Page ${page.pageId}`}
         {` — ${page.confirmedCount} / ${page.totalRequired} confirmed`}
         {complete ? ' · Complete' : ''}
       </Text>
+      <Link href={page.pageUrl} openNewTab>Open page ↗</Link>
       <Text>{`Started: ${formatDate(page.firstConfirmedAt)}`}</Text>
 
       {page.confirmed.length > 0 && (
