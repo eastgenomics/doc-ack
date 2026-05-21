@@ -83,9 +83,15 @@ resolver.define('getAllPages', async (_req) => {
 
     const firstConfirmedAt = readers.map(r => r.timestamp).sort()[0] ?? new Date().toISOString();
 
+    // Read page metadata set by webtrigger (has real title + URL)
+    const meta      = await kvs.get(`page-meta-${pageId}`);
+    const pageTitle = meta?.title ?? null;
+    const pageUrl   = meta?.url ?? pageUrlFromId(pageId);
+
     pages.push({
       pageId,
-      pageUrl:        pageUrlFromId(pageId),
+      pageTitle,
+      pageUrl,
       firstConfirmedAt,
       confirmed,
       pending,

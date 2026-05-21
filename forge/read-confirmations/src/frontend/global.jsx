@@ -9,12 +9,13 @@ const formatDate = iso =>
 
 const PageCard = ({ page }) => {
   const complete = page.confirmedCount === page.totalRequired;
+  const label = page.pageTitle ?? `Page ${page.pageId}`;
 
   return (
     <>
       <Text>
         {complete ? '✅ ' : '📋 '}
-        {`Page ${page.pageId}`}
+        {label}
         {` — ${page.confirmedCount} / ${page.totalRequired} confirmed`}
         {complete ? ' · Complete' : ''}
       </Text>

@@ -23,9 +23,15 @@ modules:
       route: docack-tracker
       title: "Document Acknowledgement Tracker"
 
+  webtrigger:
+    - key: docack-webtrigger
+      function: webtrigger
+
   function:
     - key: resolver
       handler: index.handler
+    - key: webtrigger
+      handler: index.webtriggerHandler
 
 resources:
   - key: main
