@@ -26,16 +26,12 @@ modules:
   webtrigger:
     - key: docack-webtrigger
       function: webtrigger
-    - key: docack-jira-webtrigger
-      function: jiraWebtrigger
 
   function:
     - key: resolver
       handler: index.handler
     - key: webtrigger
       handler: index.webtriggerHandler
-    - key: jiraWebtrigger
-      handler: index.jiraWebtriggerHandler
 
 resources:
   - key: main
