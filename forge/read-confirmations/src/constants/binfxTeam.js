@@ -1,0 +1,30 @@
+// UPDATE THIS LIST AND REDEPLOY WHEN TEAM MEMBERSHIP CHANGES
+export const BINFX_TEAM = [
+  { name: 'Graeme Christopher Smith', accountId: '712020:25a84375-79ff-42ba-a646-0d6f52a1db1e' },
+  { name: 'Greg Rowland',             accountId: '712020:144f74b8-df7b-4da7-9730-69686e9c83d4' },
+  { name: 'Amanah Lewis-Wade',        accountId: '712020:107eb965-3362-4e7c-a139-58fb21960174' },
+  { name: 'Prince Ofuoku',            accountId: '712020:d98ce637-f5ac-4cc6-ac96-4144cf4be1f8' },
+  { name: 'Olivia Niblock',           accountId: '6123b663dd255200768c6c0b' },
+  { name: 'Catherine Fletcher',       accountId: '63f37b80ce6f37e5ed92ff01' },
+  { name: 'Ayana Elan Manoj',         accountId: '712020:a046ab1c-bf73-4a1f-a6bd-ccd968c83be8' },
+  { name: 'Emma MacKenzie',           accountId: '631604b662fe1e6eac6d357f' },
+  { name: 'Katherine Winfield',       accountId: '5f5f85bbaba966007109af34' },
+  { name: 'Arun Karnani Khemlani',    accountId: '712020:a41591af-ce3d-4529-89aa-75e7d3e7fec2' },
+  { name: 'Rachel Egner',             accountId: '712020:8ca59ba4-0353-4ae4-9225-03c8c2543046' },
+  { name: 'Siqi Yin',                 accountId: '712020:392b58be-baf8-4fd8-95c8-d3419214ce99' },
+  { name: 'Noemi Piga',               accountId: '712020:43a8c006-f339-4b50-8e52-dc7b363f9326' },
+  { name: 'Yujin Kim',                accountId: '5c58603d4f37f144ac72e8a2' },
+  { name: 'Becky Locke',              accountId: '61372d8d24ba8b0070face68' },
+  { name: 'Karolina Janik',           accountId: '6396fddbec19ea5442afa120' },
+  { name: 'Aisha Dahir',              accountId: '5f569533c9c528007c9dcacf' },
+  { name: 'Matt Garner',              accountId: '5bc44d4d8997913f6f1c5bfb' },
+  { name: 'Chris Pyatt',              accountId: '5d88ac6ac26b6a0dcb0c8abd' },
+  { name: 'Victoria Fuller',          accountId: '712020:f7649210-63bb-4c5f-ad5e-3bb84a457902' },
+  { name: 'Sophie Paul',              accountId: '617130da892c4200720f8e60' },
+  { name: 'Robert Wilson',            accountId: '61372d8dbba6c7006a24ae24' },
+  { name: 'nadia mohammed',           accountId: '614b1b62d747e80075fb5582' },
+  { name: 'Jay Miles',                accountId: '5f569532d2c77e00759b40e2' },
+  { name: 'Joo Wook Ahn',             accountId: '557058:0da35412-d36a-4c23-bff7-5509eb203ef2' },
+];
+
+export const BINFX_TEAM_ACCOUNT_IDS = BINFX_TEAM.map(m => m.accountId);

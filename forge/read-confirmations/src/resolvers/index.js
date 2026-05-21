@@ -1,67 +1,43 @@
 import Resolver from '@forge/resolver';
-import { storage, requestConfluence, requestJira, route } from '@forge/api';
+import { requestConfluence, route } from '@forge/api';
+import { kvs } from '@forge/kvs';
+import { BINFX_TEAM } from '../constants/binfxTeam.js';
 
 const resolver = new Resolver();
 
-// ─── Storage helpers (Forge storage, keyed by pageId) ────────────────────────
-
-function storageKey(pageId) {
-  return `read-confirmations-${pageId}`;
-}
+// ─── Storage helpers ──────────────────────────────────────────────────────────
 
 async function getConfirmationData(pageId) {
-  const data = await storage.get(storageKey(pageId));
+  const data = await kvs.get(`read-confirmations-${pageId}`);
   return { readers: data?.readers ?? [] };
 }
 
 async function saveConfirmationData(pageId, readers) {
-  await storage.set(storageKey(pageId), { readers });
+  await kvs.set(`read-confirmations-${pageId}`, { readers });
 }
 
-async function getDocAckKey(pageId) {
-  // Rule A writes this as a Confluence content property via the Jira automation web request
-  const res = await requestConfluence(
-    route`/rest/api/content/${pageId}/property/docack-parent-key`,
-    { headers: { Accept: 'application/json' } }
-  );
-  if (res.status !== 200) return null;
-  const body = await res.json();
-  return body.value?.issueKey ?? null;
+// ─── Page index helpers ───────────────────────────────────────────────────────
+
+async function addToPageIndex(pageId, pageTitle) {
+  const index = await kvs.get('confirmed-pages-index') ?? [];
+  if (!index.find(p => p.pageId === pageId)) {
+    index.push({ pageId, pageTitle, firstConfirmedAt: new Date().toISOString() });
+    await kvs.set('confirmed-pages-index', index);
+  }
 }
 
-// ─── Jira sub-task helper ─────────────────────────────────────────────────────
-
-async function closeJiraSubtask(pageId, accountId) {
-  const parentKey = await getDocAckKey(pageId);
-  if (!parentKey) return;
-
-  const jql = encodeURIComponent(
-    `project=DOCACK AND parent="${parentKey}" AND assignee="${accountId}" AND status!="Done"`
-  );
-  const searchRes = await requestJira(
-    route`/rest/api/3/search?jql=${jql}&maxResults=1`,
-    { headers: { Accept: 'application/json' } }
-  );
-  const searchBody = await searchRes.json();
-  if (!searchBody.issues?.length) return;
-
-  const subtaskId = searchBody.issues[0].id;
-
-  const transRes = await requestJira(
-    route`/rest/api/3/issue/${subtaskId}/transitions`,
-    { headers: { Accept: 'application/json' } }
-  );
-  const transBody = await transRes.json();
-  const doneTx = transBody.transitions?.find(
-    (t) => t.to.statusCategory.key === 'done'
-  );
-  if (!doneTx) return;
-
-  await requestJira(route`/rest/api/3/issue/${subtaskId}/transitions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ transition: { id: doneTx.id } }),
-  });
+async function getPageTitle(pageId) {
+  try {
+    const res = await requestConfluence(
+      route`/rest/api/content/${pageId}?fields=title`,
+      { headers: { Accept: 'application/json' } }
+    );
+    if (!res.ok) return `Page ${pageId}`;
+    const body = await res.json();
+    return body.title ?? `Page ${pageId}`;
+  } catch {
+    return `Page ${pageId}`;
+  }
 }
 
 // ─── Resolvers ────────────────────────────────────────────────────────────────
@@ -69,37 +45,67 @@ async function closeJiraSubtask(pageId, accountId) {
 resolver.define('getConfirmations', async (req) => {
   const pageId = req.context.extension.content.id;
   const { readers } = await getConfirmationData(pageId);
-  return { readers };
+  return { readers, total: BINFX_TEAM.length };
 });
 
 resolver.define('addConfirmation', async (req) => {
-  const pageId = req.context.extension.content.id;
+  const pageId    = req.context.extension.content.id;
   const accountId = req.context.accountId;
 
   const { readers } = await getConfirmationData(pageId);
 
-  // Idempotency — do not double-record
   if (readers.find((r) => r.accountId === accountId)) {
-    return { readers };
+    return { readers, total: BINFX_TEAM.length };
   }
 
-  readers.push({
-    accountId,
-    displayName: accountId,
-    timestamp: new Date().toISOString(),
-    version: 'current',
-  });
-
+  readers.push({ accountId, timestamp: new Date().toISOString() });
   await saveConfirmationData(pageId, readers);
 
-  // Close Jira sub-task (best-effort)
+  // Add page to global index (best-effort, get title from Confluence)
   try {
-    await closeJiraSubtask(pageId, accountId);
+    const title = await getPageTitle(pageId);
+    await addToPageIndex(pageId, title);
   } catch (e) {
-    console.error('Failed to close Jira sub-task:', e);
+    console.error('Failed to update page index:', e);
   }
 
-  return { readers };
+  return { readers, total: BINFX_TEAM.length };
+});
+
+resolver.define('getAllPages', async (_req) => {
+  const index = await kvs.get('confirmed-pages-index') ?? [];
+  const pages = [];
+
+  for (const entry of index) {
+    const { readers } = await getConfirmationData(entry.pageId);
+    const confirmedIds = new Set(readers.map(r => r.accountId));
+
+    const confirmed = readers.map(r => ({
+      accountId: r.accountId,
+      displayName: BINFX_TEAM.find(m => m.accountId === r.accountId)?.name ?? r.accountId,
+      timestamp: r.timestamp,
+    })).sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+    const pending = BINFX_TEAM
+      .filter(m => !confirmedIds.has(m.accountId))
+      .map(m => ({ accountId: m.accountId, displayName: m.name }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+    pages.push({
+      pageId:          entry.pageId,
+      pageTitle:       entry.pageTitle,
+      firstConfirmedAt: entry.firstConfirmedAt,
+      confirmed,
+      pending,
+      confirmedCount:  confirmed.length,
+      totalRequired:   BINFX_TEAM.length,
+    });
+  }
+
+  // Sort by most recently active first
+  pages.sort((a, b) => new Date(b.firstConfirmedAt) - new Date(a.firstConfirmedAt));
+
+  return { pages };
 });
 
 export const handler = resolver.getDefinitions();

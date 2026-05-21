@@ -14,6 +14,15 @@ modules:
       render: native
       title: Read Confirmations
 
+  confluence:globalPage:
+    - key: docack-global-page
+      resource: global
+      resolver:
+        function: resolver
+      render: native
+      route: docack-tracker
+      title: "Document Acknowledgement Tracker"
+
   function:
     - key: resolver
       handler: index.handler
@@ -21,10 +30,10 @@ modules:
 resources:
   - key: main
     path: src/frontend/index.jsx
+  - key: global
+    path: src/frontend/global.jsx
 
 permissions:
   scopes:
-    - read:confluence-content.all
     - storage:app
-    - read:jira-work
-    - write:jira-work
+    - read:confluence-content.all
