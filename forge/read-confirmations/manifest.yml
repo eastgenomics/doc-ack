@@ -41,9 +41,12 @@ resources:
 
 permissions:
   scopes:
+    - read:jira-work
+    - manage:jira-configuration
+    - write:jira-work
     - storage:app
     - read:confluence-content.all
   external:
     fetch:
       backend:
-        - 'https://cuhbioinformatics.atlassian.net'
+        - address: https://cuhbioinformatics.atlassian.net

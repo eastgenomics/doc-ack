@@ -53,20 +53,33 @@ export async function webtriggerHandler(req) {
       return { statusCode: 200, body: JSON.stringify({ ok: true, pageId, created: 0 }) };
     }
 
-    const issueRes = await fetch(
-      JIRA_BASE + '/rest/api/3/issue/' + issueKey + '?fields=summary,customfield_10651',
-      { headers: jiraHeaders() }
-    );
+    // Use acknowledger data passed inline from Automation rule if available
+    // (avoids race condition where fields not yet committed at time of fetch)
+    const inlineIds   = body.acknowledgerIds;
+    const inlineNames = body.acknowledgerNames;
+    let acknowledgers = [];
 
-    if (!issueRes.ok) {
-      const err = await issueRes.text();
-      console.error('[webtrigger] failed to fetch issue: ' + issueRes.status + ' ' + err);
-      return { statusCode: 200, body: JSON.stringify({ ok: true, pageId, subtaskError: 'could not fetch issue' }) };
+    if (inlineIds && inlineIds.length > 0) {
+      // Jira Automation renders multi-user picker as comma-separated strings
+      const ids   = String(inlineIds).split(', ').map(s => s.trim()).filter(Boolean);
+      const names = inlineNames ? String(inlineNames).split(', ').map(s => s.trim()) : ids;
+      acknowledgers = ids.map((id, i) => ({ accountId: id, displayName: names[i] ?? id }));
+      console.log('[webtrigger] using inline acknowledgers: ' + acknowledgers.length);
+    } else {
+      // Fallback: fetch the issue
+      const issueRes = await fetch(
+        JIRA_BASE + '/rest/api/3/issue/' + issueKey + '?fields=summary,customfield_10651',
+        { headers: jiraHeaders() }
+      );
+      if (!issueRes.ok) {
+        const err = await issueRes.text();
+        console.error('[webtrigger] failed to fetch issue: ' + issueRes.status + ' ' + err);
+        return { statusCode: 200, body: JSON.stringify({ ok: true, pageId, subtaskError: 'could not fetch issue' }) };
+      }
+      const issue = await issueRes.json();
+      acknowledgers = (issue.fields?.customfield_10651 ?? []).map(u => ({ accountId: u.accountId, displayName: u.displayName }));
+      console.log('[webtrigger] fetched acknowledgers: ' + acknowledgers.length);
     }
-
-    const issue        = await issueRes.json();
-    const summary      = issue.fields?.summary ?? issueKey;
-    const acknowledgers = issue.fields?.customfield_10651 ?? [];
 
     console.log('[webtrigger] ' + issueKey + ' — ' + acknowledgers.length + ' acknowledger(s)');
 
