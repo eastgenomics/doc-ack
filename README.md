@@ -218,4 +218,4 @@ Legacy rule for page metadata storage. Fires on DOCACK Task creation (project 10
 | Document Acknowledgement Tracker | https://cuhbioinformatics.atlassian.net/wiki/plugins/servlet/ac/doc-ack-register/docack-tracker |
 | System documentation | https://cuhbioinformatics.atlassian.net/wiki/spaces/DV/pages/4698374282 |
 | Forge Developer Console | https://developer.atlassian.com/console/myapps |
-| GitHub repo | https://github.com/woook/doc-ack |
+| GitHub repo | https://github.com/eastgenomics/doc-ack |
