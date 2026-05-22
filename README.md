@@ -171,27 +171,31 @@ Fields on the **Release** tab of screen `10138`.
 
 Rules live in Jira and cannot be version-controlled. Documented here for recovery.
 
-### Rule: Create acknowledgement sub-tasks on Acknowledge transition (DI)
+### Rule: Create acknowledgement sub-tasks on Acknowledge transition
 
-**UUID:** `019e4f3f-a2f1-7675-bc9f-b675e8524483`
+**UUID:** `019e5149-8752-76f1-bb78-78d4a70d78d6`
 
 | Setting | Value |
 |---|---|
-| Trigger | Issue transitioned → **Acknowledge** (matched by NAME) |
+| Trigger | Issue transitioned → **Acknowledge** (matched by ID: `11014`) |
 | Condition | Issue type = Document (10626) |
 | Scope | DI project (10118) |
 | Actor | Automation service account |
 
 **Actions:**
-1. `jira.condition.container.block`
-2. → `jira.condition.if.block`
-3. → → `jira.smart.values.branch` over `{{issue.customfield_10651}}` (variable: `member`)
-4. → → → `jira.issue.create` — Sub-task, parent = current, assignee = `{{member.accountId}}`
+1. Add label `needs-acknowledgement` to the Document issue
+2. `jira.condition.container.block`
+3. → IF `Acknowledgement Required` = `Yes — whole team` → 25 hardcoded `jira.issue.create` (one per binfxTeam member)
+4. → IF `Acknowledgement Required` = `Yes — specified individuals` → `jira.smart.values.branch` over `{{issue.customfield_10651}}` → `jira.issue.create` per member
+
+**Sub-task type:** `Acknowledge` (ID: `10659`) — sub-task issue type with its own workflow
 
 **Sub-task fields:**
-- Summary: `Acknowledge: {{member.displayName}} — {{issue.summary}}`
+- Summary: `Acknowledge: [name] — [parent summary]`
 - Description: instructions + `{{issue."Release development and testing"}}`
-- Assignee: `{{member.accountId}}`
+- Assignee: hardcoded account ID (whole team) or `{{member.accountId}}` (specified)
+
+**Important:** Status ID `11014` is the active Acknowledge status. Status `10272` is "Final Assurance" (old name, unrelated). Use the ID in triggers to avoid ambiguity.
 
 ### Rule: Notify Forge webtrigger on DOCACK issue created
 
@@ -203,10 +207,10 @@ Legacy rule for page metadata storage. Fires on DOCACK Task creation (project 10
 
 ## Known Issues / Gotchas
 
-- **`requestJira` doesn't work from Forge webtrigger contexts** — use `fetch()` with `JIRA_BASIC_AUTH` env var instead
-- **Jira Automation web requests to `*.atlassian-dev.net` fail with 401** — Automation routes through Atlassian's internal network where Forge webtrigger URLs aren't reachable externally. Use native Automation actions for Jira operations
-- **`toStatus` in Automation triggers must use `type: NAME`** — `type: ID` doesn't fire the rule
+- **`toStatus` in triggers must use `type: ID` not `type: NAME`** — two statuses named "Acknowledge" exist (10272 = "Final Assurance" legacy, 11014 = active). NAME match is ambiguous. Always use ID `11014`
 - **`jira.smart.values.branch` needs field ID** — use `{{issue.customfield_10651}}` not `{{issue."Acknowledgers"}}` for cross-project compatibility
+- **Updating the whole-team hardcoded list** — when team changes, update both `binfxTeam.js` AND rebuild the `Yes - whole team` IF block in automation rule `019e5149` (25 hardcoded create actions)
+- **Jira Automation web requests to `*.atlassian-dev.net` fail with 401** — Automation routes through Atlassian's internal network where Forge webtrigger URLs aren't reachable. Use native Automation actions for Jira operations
 - **Forge KVS is scoped per product installation** — Jira-context writes are not visible to Confluence resolvers. Always use the Confluence webtrigger URL
 
 ---
